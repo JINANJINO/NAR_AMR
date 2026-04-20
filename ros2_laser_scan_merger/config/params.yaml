@@ -1,0 +1,59 @@
+/ros2_laser_scan_merger:
+  ros__parameters:
+    scanTopic1: /scan_front_filtered
+    scanTopic2: /scan_back_filtered
+
+    # IMPORTANT:
+    # The current C++ code reads 'pointCloutFrameId' (typo), not 'pointCloudFrameId'.
+    # Keep the typo key until the source is fixed.
+    pointCloutFrameId: base_footprint
+    pointCloudTopic: /cloud_in
+
+    use_sim_time: true
+    flip1: false
+    flip2: false
+    inverse1: false
+    inverse2: false
+
+    # Front lidar (URDF)
+    laser1XOff: 0.387
+    laser1YOff: -0.280
+    laser1ZOff: 0.553906
+    laser1Alpha: 180.0
+    laser1AngleMin: -180.0
+    laser1AngleMax: 180.0
+
+    # Back lidar (URDF)
+    laser2XOff: -0.387
+    laser2YOff: 0.280
+    laser2ZOff: 0.553906
+    laser2Alpha: 0.0
+    laser2AngleMin: -180.0
+    laser2AngleMax: 180.0
+
+    show1: true
+    show2: true
+    qos_overrides./parameter_events.publisher.depth: 1000
+    qos_overrides./parameter_events.publisher.reliability: best_effort
+
+/pointcloud_to_laserscan:
+  ros__parameters:
+    target_frame: base_footprint
+    use_sim_time: true
+    angle_increment: 0.0087
+    angle_max: 3.14159
+    angle_min: -3.14159
+    range_min: 0.05
+    range_max: 30.0
+    use_inf: true
+    inf_epsilon: 1.0
+    max_height: 1.0
+    min_height: 0.0
+    queue_size: 64
+    scan_time: 0.1
+    transform_tolerance: 0.1
+    qos_overrides:
+      /parameter_events:
+        publisher:
+          depth: 1000
+          reliability: best_effort
