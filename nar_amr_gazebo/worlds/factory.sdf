@@ -1,0 +1,104 @@
+<?xml version="1.0" ?>
+<sdf version="1.8">
+    <world name="factory_world">
+        <physics name="1ms" type="ignored">
+            <max_step_size>0.001</max_step_size>
+            <real_time_factor>1.0</real_time_factor>
+        </physics>
+        <plugin filename="gz-sim-physics-system" name="gz::sim::systems::Physics"></plugin>
+        <plugin filename="gz-sim-user-commands-system" name="gz::sim::systems::UserCommands"></plugin>
+        <plugin filename="gz-sim-scene-broadcaster-system" name="gz::sim::systems::SceneBroadcaster"></plugin>
+
+        <light type="directional" name="sun">
+            <cast_shadows>true</cast_shadows>
+            <pose>0 0 10 0 0 0</pose>
+            <diffuse>0.8 0.8 0.8 1</diffuse>
+            <specular>0.2 0.2 0.2 1</specular>
+            <attenuation><range>1000</range><constant>0.9</constant><linear>0.01</linear><quadratic>0.001</quadratic></attenuation>
+            <direction>-0.5 0.1 -0.9</direction>
+        </light>
+
+        <model name="ground_plane">
+            <static>true</static>
+            <link name="link">
+                <collision name="collision"><geometry><plane><normal>0 0 1</normal><size>100 100</size></plane></geometry></collision>
+                <visual name="visual">
+                    <geometry><plane><normal>0 0 1</normal><size>100 100</size></plane></geometry>
+                    <material>
+                        <ambient>0.6 0.6 0.6 1</ambient>
+                        <diffuse>0.6 0.6 0.6 1</diffuse>
+                        <specular>0.1 0.1 0.1 1</specular>
+                    </material>
+                </visual>
+            </link>
+        </model>
+
+        <model name="factory_walls">
+            <static>true</static>
+            <link name="wall_north">
+                <pose>0 7.5 1 0 0 0</pose>
+                <collision name="col"><geometry><box><size>15.2 0.2 2</size></box></geometry></collision>
+                <visual name="vis"><geometry><box><size>15.2 0.2 2</size></box></geometry><material><ambient>0.8 0.8 0.9 1</ambient></material></visual>
+            </link>
+            <link name="wall_south">
+                <pose>0 -7.5 1 0 0 0</pose>
+                <collision name="col"><geometry><box><size>15.2 0.2 2</size></box></geometry></collision>
+                <visual name="vis"><geometry><box><size>15.2 0.2 2</size></box></geometry><material><ambient>0.8 0.8 0.9 1</ambient></material></visual>
+            </link>
+            <link name="wall_east">
+                <pose>7.5 0 1 0 0 0</pose>
+                <collision name="col"><geometry><box><size>0.2 15 2</size></box></geometry></collision>
+                <visual name="vis"><geometry><box><size>0.2 15 2</size></box></geometry><material><ambient>0.8 0.8 0.9 1</ambient></material></visual>
+            </link>
+            <link name="wall_west">
+                <pose>-7.5 0 1 0 0 0</pose>
+                <collision name="col"><geometry><box><size>0.2 15 2</size></box></geometry></collision>
+                <visual name="vis"><geometry><box><size>0.2 15 2</size></box></geometry><material><ambient>0.8 0.8 0.9 1</ambient></material></visual>
+            </link>
+        </model>
+
+        <model name="main_pillar_1">
+            <pose>0 2 1 0 0 0</pose>
+            <static>true</static>
+            <link name="link">
+                <collision name="col"><geometry><box><size>1 1 2</size></box></geometry></collision>
+                <visual name="vis"><geometry><box><size>1 1 2</size></box></geometry><material><ambient>0.3 0.3 0.3 1</ambient></material></visual>
+            </link>
+        </model>
+        <model name="main_pillar_2">
+            <pose>0 -2 1 0 0 0</pose>
+            <static>true</static>
+            <link name="link">
+                <collision name="col"><geometry><box><size>1 1 2</size></box></geometry></collision>
+                <visual name="vis"><geometry><box><size>1 1 2</size></box></geometry><material><ambient>0.3 0.3 0.3 1</ambient></material></visual>
+            </link>
+        </model>
+
+        <model name="conveyor_belt">
+            <pose>-4 0 0.5 0 0 0</pose>
+            <static>true</static>
+            <link name="link">
+                <collision name="col"><geometry><box><size>1.5 6 1</size></box></geometry></collision>
+                <visual name="vis"><geometry><box><size>1.5 6 1</size></box></geometry><material><ambient>0.2 0.5 0.2 1</ambient></material></visual>
+            </link>
+        </model>
+
+        <model name="cargo_pallet_1">
+            <pose>4 4 0.5 0 0 0</pose>
+            <static>true</static>
+            <link name="link">
+                <collision name="col"><geometry><box><size>2 2 1</size></box></geometry></collision>
+                <visual name="vis"><geometry><box><size>2 2 1</size></box></geometry><material><ambient>0.6 0.4 0.2 1</ambient></material></visual>
+            </link>
+        </model>
+        <model name="cargo_pallet_2">
+            <pose>4 -4 0.75 0 0 0</pose>
+            <static>true</static>
+            <link name="link">
+                <collision name="col"><geometry><box><size>3 1.5 1.5</size></box></geometry></collision>
+                <visual name="vis"><geometry><box><size>3 1.5 1.5</size></box></geometry><material><ambient>0.6 0.4 0.2 1</ambient></material></visual>
+            </link>
+        </model>
+
+    </world>
+</sdf>

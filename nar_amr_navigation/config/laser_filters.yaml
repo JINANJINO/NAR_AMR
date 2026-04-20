@@ -1,0 +1,33 @@
+scan_front_filter:
+  ros__parameters:
+    filter1:
+      name: front_box_filter
+      type: laser_filters/LaserScanBoxFilter
+      params:
+        box_frame: body_link
+        # 로봇 전체 길이 1100mm (±0.55m)
+        max_x: 0.60
+        min_x: -0.60
+        # 로봇 전체 폭 880mm (±0.44m)
+        max_y: 0.50
+        min_y: -0.50
+        # 로봇 전체 높이 709mm (0.709m)
+        max_z: 0.80
+        # 바닥(지면)부터 필터링 시작
+        min_z: -0.05
+        invert: false
+
+scan_back_filter:
+  ros__parameters:
+    filter1:
+      name: back_box_filter
+      type: laser_filters/LaserScanBoxFilter
+      params:
+        box_frame: body_link
+        max_x: 0.60
+        min_x: -0.60
+        max_y: 0.50
+        min_y: -0.50
+        max_z: 0.80
+        min_z: -0.05
+        invert: false

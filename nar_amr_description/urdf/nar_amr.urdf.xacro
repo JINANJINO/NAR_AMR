@@ -1,0 +1,284 @@
+<?xml version="1.0"?>
+<robot name="neo1_amr" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+    <xacro:arg name="use_sim" default="true"/>
+
+    <material name="orange"><color rgba="1.0 0.5 0.0 1.0"/></material>
+    <material name="black"><color rgba="0.1 0.1 0.1 1"/></material>
+    <material name="gray"><color rgba="0.5 0.5 0.5 1.0"/></material>
+
+    <xacro:macro name="box_inertia" params="m x y z o_xyz o_rpy">
+        <inertial>
+            <origin xyz="${o_xyz}" rpy="${o_rpy}"/>
+            <mass value="${m}"/>
+            <inertia ixx="${(m/12) * (y*y + z*z)}" ixy="0.0" ixz="0.0" 
+                     iyy="${(m/12) * (x*x + z*z)}" iyz="0.0" 
+                     izz="${(m/12) * (x*x + y*y)}"/>
+        </inertial>
+    </xacro:macro>
+
+    <xacro:macro name="cylinder_inertia" params="m r h o_xyz o_rpy">
+        <inertial>
+            <origin xyz="${o_xyz}" rpy="${o_rpy}"/>
+            <mass value="${m}"/>
+            <inertia ixx="${(m/12) * (3*r*r + h*h)}" ixy="0.0" ixz="0.0" 
+                     iyy="${(m/12) * (3*r*r + h*h)}" iyz="0.0" 
+                     izz="${(m/2) * (r*r)}"/>
+        </inertial>
+    </xacro:macro>
+
+    <link name="base_footprint"/>
+    
+    <link name="body_link">
+        <visual>
+            <origin xyz="0.339185 -0.235053 0.685" rpy="0 0 1.5708"/>
+            <geometry>
+                <mesh filename="package://nar_amr_description/meshes/body_link.stl" scale="0.001 0.001 0.001"/>
+            </geometry>
+            <material name="gray"/>
+        </visual>
+        <xacro:box_inertia m="100.0" x="0.6" y="0.5" z="0.3" o_xyz="0 0 0.685" o_rpy="0 0 0"/>
+    </link>
+
+    <joint name="footprint_to_body" type="fixed">
+        <parent link="base_footprint"/>
+        <child link="body_link"/>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+    </joint>
+
+    <xacro:macro name="swerve_module" params="prefix x_pos y_pos">
+        <link name="${prefix}_steering_base_link">
+            <visual>
+                <origin xyz="0 0 0" rpy="0 1.5708 0"/>
+                <geometry>
+                    <mesh filename="package://nar_amr_description/meshes/steering_base.stl" scale="0.001 0.001 0.001"/>
+                </geometry>
+                <material name="gray"/>
+            </visual>
+            <xacro:cylinder_inertia m="1.0" r="0.05" h="0.1" o_xyz="0 0 0" o_rpy="0 1.5708 0"/>
+        </link>
+
+        <link name="${prefix}_steering_link">
+            <visual>
+                <origin xyz="0 0 0" rpy="0 0 0"/>
+                <geometry>
+                    <mesh filename="package://nar_amr_description/meshes/steering.stl" scale="0.001 0.001 0.001"/>
+                </geometry>
+                <material name="orange"/>
+            </visual>
+            <xacro:box_inertia m="2.0" x="0.1" y="0.1" z="0.1" o_xyz="0 0 0" o_rpy="0 0 0"/>
+        </link>
+
+        <link name="${prefix}_drive_motor_link">
+            <visual>
+                <origin xyz="0 0 0" rpy="0 0 0"/>
+                <geometry>
+                    <mesh filename="package://nar_amr_description/meshes/drive_motor.stl" scale="0.001 0.001 0.001"/>
+                </geometry>
+                <material name="black"/>
+            </visual>
+            <collision>
+                <origin xyz="0 0 0" rpy="0 1.5708 0"/>
+                <geometry><cylinder radius="0.075" length="0.05"/></geometry>
+            </collision>
+            <xacro:cylinder_inertia m="3.0" r="0.075" h="0.05" o_xyz="0 0 0" o_rpy="0 1.5708 0"/>
+        </link>
+
+        <joint name="body_to_${prefix}_steering_base" type="fixed">
+            <parent link="body_link"/>
+            <child link="${prefix}_steering_base_link"/>
+            <origin xyz="${x_pos} ${y_pos} 0.075" rpy="1.5708 0 0"/>
+        </joint>
+
+        <joint name="${prefix}_base_to_steering" type="continuous">
+            <parent link="${prefix}_steering_base_link"/>
+            <child link="${prefix}_steering_link"/>
+            <origin xyz="0 0 0" rpy="0 1.5708 0"/>
+            <axis xyz="0 1 0"/>
+            <dynamics damping="1.0" friction="0.5"/>
+        </joint>
+
+        <joint name="${prefix}_steering_to_wheel" type="continuous">
+            <parent link="${prefix}_steering_link"/>
+            <child link="${prefix}_drive_motor_link"/>
+            <origin xyz="0 0 0" rpy="0 0 0"/>
+            <axis xyz="1 0 0"/>
+            <dynamics damping="0.5" friction="0.5"/>
+        </joint>
+    </xacro:macro>
+
+    <xacro:macro name="caster_module" params="prefix x_pos y_pos">
+        <link name="${prefix}_caster_bracket_link">
+            <visual>
+                <origin xyz="0 0 0" rpy="0 0 0"/>
+                <geometry>
+                    <mesh filename="package://nar_amr_description/meshes/caster_bracket.stl" scale="0.001 0.001 0.001"/>
+                </geometry>
+                <material name="gray"/>
+            </visual>
+            <xacro:box_inertia m="1.0" x="0.1" y="0.1" z="0.1" o_xyz="0 -0.052648 -0.108" o_rpy="0 0 0"/>
+        </link>
+
+        <link name="${prefix}_caster_wheel_link">
+            <visual>
+                <origin xyz="0 0 0" rpy="0 0 0"/>
+                <geometry>
+                    <mesh filename="package://nar_amr_description/meshes/caster_wheel.stl" scale="0.001 0.001 0.001"/>
+                </geometry>
+                <material name="black"/>
+            </visual>
+            <collision>
+                <origin xyz="0 0 0" rpy="0 1.5708 0"/>
+                <geometry><cylinder radius="0.05" length="0.04"/></geometry>
+            </collision>
+            <xacro:cylinder_inertia m="1.0" r="0.05" h="0.04" o_xyz="0 0 0" o_rpy="0 1.5708 0"/>
+        </link>
+
+        <joint name="footprint_to_${prefix}_caster_bracket" type="continuous">
+            <parent link="body_link"/>
+            <child link="${prefix}_caster_bracket_link"/>
+            <origin xyz="${x_pos} ${y_pos} 0.183" rpy="0 0 1.5708"/>
+            <axis xyz="0 0 1"/>
+            <dynamics damping="0.5" friction="0.1"/>
+        </joint>
+
+        <joint name="${prefix}_bracket_to_caster_wheel" type="continuous">
+            <parent link="${prefix}_caster_bracket_link"/>
+            <child link="${prefix}_caster_wheel_link"/>
+            <origin xyz="0 -0.052648 -0.108" rpy="0 0 0"/>
+            <axis xyz="1 0 0"/>
+            <dynamics damping="0.1" friction="0.1"/>
+        </joint>
+    </xacro:macro>
+
+    <xacro:swerve_module prefix="fl" x_pos="0.549002" y_pos="0.403658" />
+    <xacro:swerve_module prefix="fr" x_pos="0.548294" y_pos="-0.437991" />
+    <xacro:swerve_module prefix="rl" x_pos="-0.54834"  y_pos="0.343291" />
+    <xacro:swerve_module prefix="rr" x_pos="-0.54834"  y_pos="-0.353223" />
+
+    <xacro:caster_module prefix="front" x_pos="0" y_pos="0.403385" />
+    <xacro:caster_module prefix="rear"  x_pos="0" y_pos="-0.438264" />
+
+    <xacro:macro name="lidar_link" params="prefix mesh_file">
+        <link name="laser_${prefix}">
+            <visual>
+                <origin xyz="0 0 0" rpy="1.5708 0 0"/> 
+                <geometry>
+                    <mesh filename="package://nar_amr_description/meshes/${mesh_file}" scale="0.001 0.001 0.001" />
+                </geometry>
+                <material name="black"/>
+            </visual>
+            <xacro:cylinder_inertia m="0.185" r="0.0385" h="0.0398" o_xyz="0 0 0.02" o_rpy="1.5708 0 0"/>
+        </link>
+    </xacro:macro>      
+
+    <xacro:lidar_link prefix="front" mesh_file="rplidar-s2-model-3d-stl.stl"/>
+    <xacro:lidar_link prefix="back"  mesh_file="rplidar-s2-model-3d-stl.stl"/>
+
+    <joint name="body_to_lidar_front" type="fixed">
+        <parent link="body_link" />
+        <child link="laser_front" />
+        <origin xyz="0.387 -0.280 0.553906" rpy="0 0 3.14159" />
+    </joint>
+
+    <joint name="body_to_lidar_back" type="fixed">
+        <parent link="body_link" />
+        <child link="laser_back" />
+        <origin xyz="-0.387 0.280 0.553906" rpy="0 0 0" />
+    </joint>
+
+<xacro:if value="$(arg use_sim)">
+
+    <ros2_control name="NeoArcSwerveSystem" type="system">
+        <hardware>
+            <plugin>gz_ros2_control/GazeboSimSystem</plugin>
+        </hardware>
+
+        <xacro:macro name="swerve_control_interface" params="prefix">
+            <joint name="${prefix}_base_to_steering">
+                <command_interface name="position"/><state_interface name="position"/><state_interface name="velocity"/>
+            </joint>
+            <joint name="${prefix}_steering_to_wheel">
+                <command_interface name="velocity"/><state_interface name="position"/><state_interface name="velocity"/>
+            </joint>
+        </xacro:macro>
+
+        <xacro:macro name="caster_state_interface" params="prefix">
+            <joint name="footprint_to_${prefix}_caster_bracket">
+                <state_interface name="position"/><state_interface name="velocity"/>
+            </joint>
+            <joint name="${prefix}_bracket_to_caster_wheel">
+                <state_interface name="position"/><state_interface name="velocity"/>
+            </joint>
+        </xacro:macro>
+
+        <xacro:swerve_control_interface prefix="fl"/><xacro:swerve_control_interface prefix="fr"/>
+        <xacro:swerve_control_interface prefix="rl"/><xacro:swerve_control_interface prefix="rr"/>
+        <xacro:caster_state_interface prefix="front"/><xacro:caster_state_interface prefix="rear"/>
+    </ros2_control>
+
+    <gazebo>
+        <plugin filename="gz_ros2_control-system" name="gz_ros2_control::GazeboSimROS2ControlPlugin">
+            <parameters>$(find nar_amr_description)/config/swerve_controllers.yaml</parameters>
+            <controller_manager_node_name>controller_manager</controller_manager_node_name>
+        </plugin>
+        <plugin filename="gz-sim-sensors-system" name="gz::sim::systems::Sensors">
+        </plugin>
+
+        <plugin filename="gz-sim-odometry-publisher-system" name="gz::sim::systems::OdometryPublisher">
+            <odom_frame>odom_gz</odom_frame> <robot_base_frame>base_footprint</robot_base_frame>
+            <odom_publish_frequency>50</odom_publish_frequency>
+        </plugin>
+    </gazebo>
+
+    <gazebo reference="body_link">
+        <sensor name="imu_sensor" type="imu">
+            <always_on>1</always_on>
+            <update_rate>100</update_rate>
+            <visualize>true</visualize>
+            <topic>/model/neo1_amr/imu</topic> <imu>
+                <angular_velocity>
+                    <x><noise type="gaussian"><mean>0.0</mean><stddev>0.000122</stddev></noise></x>
+                    <y><noise type="gaussian"><mean>0.0</mean><stddev>0.000122</stddev></noise></y>
+                    <z><noise type="gaussian"><mean>0.0</mean><stddev>0.000122</stddev></noise></z>
+                </angular_velocity>
+                <linear_acceleration>
+                    <x><noise type="gaussian"><mean>0.0</mean><stddev>0.00117</stddev></noise></x>
+                    <y><noise type="gaussian"><mean>0.0</mean><stddev>0.00117</stddev></noise></y>
+                    <z><noise type="gaussian"><mean>0.0</mean><stddev>0.00117</stddev></noise></z>
+                </linear_acceleration>
+            </imu>
+        </sensor>
+    </gazebo>
+
+    <xacro:macro name="lidar_sensor" params="prefix topic">
+        <gazebo reference="laser_${prefix}">
+            <sensor name="${prefix}_lidar" type="gpu_lidar">
+                <topic>${topic}</topic>
+                <update_rate>10.0</update_rate>
+                <frame_id>laser_${prefix}</frame_id> 
+                <lidar> 
+                    <scan>
+                        <horizontal>
+                            <samples>360</samples>
+                            <resolution>1</resolution>
+                            <min_angle>-3.14159</min_angle>
+                            <max_angle>3.14159</max_angle>
+                        </horizontal>
+                    </scan>
+                    <range>
+                        <min>0.05</min>
+                        <max>30.0</max>
+                        <resolution>0.013</resolution>
+                    </range>
+                </lidar>
+                <always_on>true</always_on>
+                <visualize>false</visualize> 
+            </sensor>
+        </gazebo>
+    </xacro:macro>
+
+    <xacro:lidar_sensor prefix="front" topic="/scan_front"/>
+    <xacro:lidar_sensor prefix="back"  topic="/scan_back"/>
+</xacro:if>
+</robot>

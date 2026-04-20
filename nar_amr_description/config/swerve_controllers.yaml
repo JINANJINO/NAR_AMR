@@ -1,0 +1,49 @@
+controller_manager:
+  ros__parameters:
+    update_rate: 100  # 1초에 100번 모터 제어 명령 업데이트
+    use_sim_time: true
+
+    # 현재 모든 관절의 상태(각도, 속도)를 읽어오는 기본 컨트롤러
+    joint_state_broadcaster:
+      type: joint_state_broadcaster/JointStateBroadcaster
+
+    # 조향(Steering) 그룹 컨트롤러: 4개 모터의 각도 제어
+    steering_controller:
+      type: position_controllers/JointGroupPositionController
+
+    # 구동(Drive) 그룹 컨트롤러: 4개 바퀴의 속도 제어
+    drive_controller:
+      type: velocity_controllers/JointGroupVelocityController
+
+joint_state_broadcaster:
+  ros__parameters:
+    use_sim_time: true
+    publish_rate: 100.0
+
+# 각 컨트롤러의 정체(Type)를 정의)
+    joint_state_broadcaster:
+      type: joint_state_broadcaster/JointStateBroadcaster
+
+    steering_controller:
+      type: position_controllers/JointGroupPositionController
+
+    drive_controller:
+      type: velocity_controllers/JointGroupVelocityController
+
+steering_controller:
+  ros__parameters:
+    use_sim_time: true
+    joints:
+      - fl_base_to_steering
+      - fr_base_to_steering
+      - rl_base_to_steering
+      - rr_base_to_steering
+
+drive_controller:
+  ros__parameters:
+    use_sim_time: true
+    joints:
+      - fl_steering_to_wheel
+      - fr_steering_to_wheel
+      - rl_steering_to_wheel
+      - rr_steering_to_wheel

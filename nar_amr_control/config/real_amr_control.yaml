@@ -1,0 +1,105 @@
+integrated_swerve_controller:
+  ros__parameters:
+    use_sim_time: false
+
+    # cmd_vel path
+    # launch file also overrides this, but keeping the default aligned avoids confusion
+    cmd_vel_topic: /cmd_vel
+    cmd_vel:
+      reliability: reliable
+
+    # robot geometry (WDS150-based)
+    robot:
+      wheel_base: 1.10
+      track_width: 0.705
+      track_front: 0.88
+      track_rear: 0.70
+      wheel_radius: 0.075
+
+    # conservative limits for first real-hardware bringup
+    # WDS150 guide indicates ~1.18 m/s at 1/20 drive ratio and 150 mm wheel,
+    # so 1.15 m/s is a reasonable capped value.
+    limits:
+      max_linear_speed: 1.15
+      max_angular_speed: 2.0
+      max_wheel_rpm: 3000.0
+      max_accel: 0.5
+      max_angular_accel: 1.57
+
+    # drive motors (FL, FR, RL, RR)
+    drive_motor_ids: [1, 3, 5, 7]
+    drive_motor_bus_names: ['can1', 'can0', 'can1', 'can0']
+    drive_motor_rpdo_bases: [0x200, 0x200, 0x200, 0x200]
+    target_velocity_pulses_per_rev: 10000.0
+    drive_control_word: 0x000F
+    drive_mode_of_operation: 0x03
+    auto_enable_sequence: true
+    motor_direction_multipliers: [1.0, 1.0, 1.0, 1.0]
+    drive:
+      invert_modules: [false, true, false, true]
+
+    # steer motors (FL, FR, RL, RR)
+    steer_motor_ids: [2, 4, 6, 8]
+    steer_motor_bus_names: ['can1', 'can0', 'can1', 'can0']
+    steer_motor_rpdo_bases: [0x200, 0x200, 0x200, 0x200]
+    steer_invert_ids: []
+    steer_ticks_per_rev: 0.0
+    steer_position_units: puu
+    steer_feed_constant_puu_per_rev: 18000.0
+    steer_elec_gear_numerator: 1.0
+    steer_elec_gear_denominator: 1.0
+    steer_gear_ratio: 122.5
+    steer_mode_of_operation: 0x01
+    steer_trigger_mode: pulse
+    steer_use_bit5: true
+    steer_control_word_enable: 0x000F
+    profile_velocity: 800000
+    profile_accel: 600000
+    profile_decel: 600000
+    servo_on_sleep_sec: 0.05
+    trigger_pulse_delay_sec: 0.02
+    retrigger_period_sec: 0.0
+    steer:
+      max_mech_angle_deg: 140.0
+      flip_hysteresis_deg: 5.0
+      enable_flip: true
+      offset_deg: [0.0, 0.0, 0.0, 0.0]
+
+    # safety / watchdog
+    heartbeat_sync_period_sec: 0.02
+    can_feedback_timeout_sec: 3.0
+    feedback_watchdog_check_period_sec: 0.1
+
+    # coordinated steering-drive control
+    coordinated_control:
+      enable: true
+      full_speed_angle_error_deg: 5.0
+      zero_speed_angle_error_deg: 45.0
+      min_speed_ratio: 0.1
+      use_smooth_curve: true
+
+    # steering completion gate
+    steering_gate:
+      enable: true
+      timeout_sec: 0.0
+      position_tolerance: 500
+      use_position_feedback: true
+      large_error_threshold: 275000
+
+    # startup support tasks
+    support:
+      enable_startup_tasks: true
+      nmt_auto_start:
+        enable: true
+        node_ids: [1, 2, 3, 4, 5, 6, 7, 8]
+        bus_names: ['can1', 'can1', 'can0', 'can0', 'can1', 'can1', 'can0', 'can0']
+        heartbeat_duration_sec: 1.5
+        log_heartbeats: false
+      steer_recovery:
+        enable: true
+        can0_nodes: [4, 8]
+        can1_nodes: [2, 6]
+
+    # debug
+    debug:
+      print_intermediate: false
