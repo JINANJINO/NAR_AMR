@@ -39,16 +39,8 @@ def generate_launch_description():
         remappings=[('scan', 'scan_back')],
         output='screen'
     )
-
-    # 3. Xsens MTi-3 IMU Node (추가됨!)
-    xsens_imu_launch = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(
-            os.path.join(get_package_share_directory('bluespace_ai_xsens_ros_mti_driver'), 'launch', 'xsens_mti_node.launch.py')
-        )
-    )
     
     return LaunchDescription([
         front_lidar_node,
-        back_lidar_node,
-        xsens_imu_launch
+        back_lidar_node
     ])
