@@ -1,6 +1,6 @@
 ## 개발환경
-- OS : **Ubuntu 24.04**
-- ROS Version : **ROS2 Jazzy**
+- OS : **Ubuntu 22.04**
+- ROS Version : **ROS2 Humble**
 - Simulator : **Gazebo**
 
 ---
@@ -50,4 +50,20 @@
 
 ### Simulator 실행 모습
 [Screencast from 2026-04-08 16-21-38.webm](https://github.com/user-attachments/assets/47a83e21-6cba-454d-b6bb-9f661333b248)
+
+---
+
+### Lidar data, 실제 모터 구동 확인
+#### Rviz 내 Lidar data 확인(전처리 전)
+<img width="664" height="439" alt="Screenshot from 2026-04-22 09-24-39" src="https://github.com/user-attachments/assets/cbc963d5-4210-46db-b542-5b4d756a36c1" />
+
+
+#### 실제 모터 구동 테스트
+<img width="400" alt="20260421_162241-ezgif com-cut" src="https://github.com/user-attachments/assets/a3883226-f4b5-4e20-a4d2-13baed32f527" />
+
+
+
+
+
+
 
