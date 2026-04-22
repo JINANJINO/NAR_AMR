@@ -1,6 +1,6 @@
 ## 개발환경
 - OS : **Ubuntu 22.04/Ubunt 24.04**
-- ROS Version : **ROS2 Humble/ROS Jazzy**
+- ROS Version : **ROS2 Humble / ROS Jazzy**
 - Simulator : **Gazebo**
 
 ---
