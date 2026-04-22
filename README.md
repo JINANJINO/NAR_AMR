@@ -83,6 +83,16 @@ jinhan@jinhan:~/nar_amr/src/nar_amr_description$ tree
 
 8 directories, 14 files
 ```
+**2.2 Package Files Summary**
+| 구분 | 파일 | 요약 |
+|---|---|---|
+| Launch | `launch/sim.launch.py` | Xacro 기반 `robot_description`을 publish하고, Gazebo Sim의 `factory.sdf` 월드를 실행한 뒤 로봇을 `neo1_amr`로 spawn. 이후 `joint_state_broadcaster`, `steering_controller`, `drive_controller`를 순차적으로 실행하고, `/clock`, `/scan_front`, `/scan_back`, `/imu/data`, `/odom_gz`, `/tf_gz` 브릿지를 구성. |
+| Launch | `launch/swerve_gui.py` | `/steering_controller/commands`와 `/drive_controller/commands`에 직접 명령을 보내는 저수준 테스트 GUI이다. 직진, 후진, 좌/우 게걸음, 제자리 회전, 정지 프리셋을 버튼으로 보낼 수 있다. |
+| Launch | `launch/test.launch.py` | Xacro를 URDF로 변환하여 `robot_state_publisher`, `joint_state_publisher_gui`, `rviz2`를 실행하는 모델 검증용 런치 파일. Gazebo 없이 링크/조인트 구조와 외형을 빠르게 확인할 때 사용. |
+| Config | `config/swerve_controllers.yaml` | `controller_manager`를 100 Hz로 설정, `joint_state_broadcaster`, `steering_controller`(4개 steering joint position control), `drive_controller`(4개 wheel joint velocity control)를 정의. |
+| URDF | `urdf/nar_amr.urdf.xacro` | `base_footprint`-`body_link` 본체 구조 위에 4개의 스워브 모듈(FL/FR/RL/RR), 2개의 캐스터(front/rear), 전·후방 LiDAR 링크를 정의. 시뮬레이션 모드에서는 `ros2_control` 인터페이스, Gazebo 센서(IMU, front/back LiDAR), Gazebo odometry publisher, `gz_ros2_control` 플러그인을 추가
+
+
 **2.3URDF 구조**
 <img width="1256" height="407" alt="image (2)" src="https://github.com/user-attachments/assets/21e10873-496b-4bab-8cb2-328f454c9884" />
 
@@ -121,6 +131,19 @@ jinhan@jinhan:~/nar_amr/src/nar_amr_navigation$ tree
 
 **3.2 Package Files Summary**
 
+| 구분 | 파일 | 요약 |
+|---|---|---|
+| Launch | `bringup.launch.py` | 실기/시뮬레이션 공통 상위 bringup |
+| Launch | `laser_filter.launch.py` | 전·후방 LiDAR 필터링 |
+| Launch | `real_lidars.launch.py` | 실기 RPLidar 2대 실행 |
+| Launch | `scan_merger.launch.py` | 다중 스캔 병합 후 `/scan` 생성 |
+| Launch | `slam.launch.py` | SLAM Toolbox 실행 |
+| Config | `ekf.yaml` | `/odom_raw + imu/data -> /odom` EKF 융합 |
+| Config | `laser_filters.yaml` | 차체 영역 LiDAR 제거 필터 |
+| Config | `mapper_params_sim.yaml` | SLAM Toolbox 파라미터 |
+| Config | `nav2_params.yaml` | Nav2 전체 파라미터 |
+| Map | `factory_map.yaml` | 정적 지도 메타파일 |
+| Map | `factory_map.pgm` | 정적 지도 이미지 |
 
 
 ---
