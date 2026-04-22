@@ -610,10 +610,10 @@ class IntegratedSwerveController0930(Node):
         super().__init__('integrated_swerve_controller')
         self.get_logger().info('--- integrated swerve controller 0930 ---')
 
-        self.declare_parameter('to_can_bus_topic_can0', '/to_can_bus_can0')
-        self.declare_parameter('to_can_bus_topic_can1', '/to_can_bus_can1')
-        self.declare_parameter('from_can_bus_topic_can0', '/from_can_bus_can0')
-        self.declare_parameter('from_can_bus_topic_can1', '/from_can_bus_can1')
+        self.declare_parameter('to_can_bus_topic_can0', '/can0/to_can_bus')
+        self.declare_parameter('to_can_bus_topic_can1', '/can1/to_can_bus')
+        self.declare_parameter('from_can_bus_topic_can0', '/can0/from_can_bus')
+        self.declare_parameter('from_can_bus_topic_can1', '/can1/from_can_bus')
         # [2025-11-27] RPDO SYNC 동기화 사용 시 이 값이 실제 제어 주기가 됨
         # 기존 0.5초 → 0.02초(50Hz)로 변경하여 실시간 제어 가능하게 함
         self.declare_parameter('heartbeat_sync_period_sec', 0.02)  # 단위: 초 (s)
