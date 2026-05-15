@@ -24,6 +24,7 @@ except ImportError:  # pragma: no cover - optional dependency
 
 import rclpy
 from geometry_msgs.msg import Twist
+from rclpy.duration import Duration
 from rclpy.node import Node
 from rclpy.qos import HistoryPolicy, QoSProfile, ReliabilityPolicy
 from std_msgs.msg import Float32MultiArray
@@ -72,6 +73,10 @@ NMT_STATE_MAP = {
     0x05: 'Operational',
     0x7F: 'Pre-operational',
 }
+
+# CANopen heartbeat (node guarding): COB-ID 0x700 + node_id → 0x701..0x77F
+CANOPEN_HEARTBEAT_COB_ID_MIN = 0x701
+CANOPEN_HEARTBEAT_COB_ID_MAX = 0x77F
 
 
 class CANError(RuntimeError):
@@ -617,8 +622,11 @@ class IntegratedSwerveController0930(Node):
         # [2025-11-27] RPDO SYNC 동기화 사용 시 이 값이 실제 제어 주기가 됨
         # 기존 0.5초 → 0.02초(50Hz)로 변경하여 실시간 제어 가능하게 함
         self.declare_parameter('heartbeat_sync_period_sec', 0.02)  # 단위: 초 (s)
-        self.declare_parameter('can_feedback_timeout_sec', 3.0)  # 단위: 초 (s)
-        self.declare_parameter('feedback_watchdog_check_period_sec', 0.1)  # 단위: 초 (s)
+        self.declare_parameter('can_heartbeat_timeout_sec', 3.0)  # 단위: 초 (s), 모터 heartbeat 미수신 시 trip
+        self.declare_parameter('can_heartbeat_watchdog_check_period_sec', 0.1)  # 단위: 초 (s)
+        self.declare_parameter('cmd_vel_timeout_sec', 0.5)  # 단위: 초 (s), 0 = 비활성
+        self.declare_parameter('cmd_vel_timeout_check_period_sec', 0.1)  # 단위: 초 (s)
+        self.declare_parameter('cmd_vel_suppress_after_manual_steer_sec', 2.0)  # 단위: 초 (s)
 
         self._declare_swerve_parameters()
         self._declare_drive_parameters()
@@ -702,17 +710,39 @@ class IntegratedSwerveController0930(Node):
         self.create_subscription(Frame, from_can0_topic, self._can_feedback_callback, 10)
         self.create_subscription(Frame, from_can1_topic, self._can_feedback_callback, 10)
 
-        self.can_feedback_timeout = float(self.get_parameter('can_feedback_timeout_sec').value)
-        watchdog_check_period = float(self.get_parameter('feedback_watchdog_check_period_sec').value)
-        self.last_can_feedback_time = self.get_clock().now()
-        self._is_feedback_watchdog_tripped = False
+        self.can_heartbeat_timeout = float(self.get_parameter('can_heartbeat_timeout_sec').value)
+        heartbeat_watchdog_period = float(
+            self.get_parameter('can_heartbeat_watchdog_check_period_sec').value
+        )
+        self.last_can_heartbeat_time = self.get_clock().now()
+        self._is_heartbeat_watchdog_tripped = False
         self._is_shutting_down = False  # Flag to ignore cmd_vel during shutdown
-        self.feedback_watchdog_timer = None
-        if self.can_feedback_timeout > 0.0:
-            period = watchdog_check_period if watchdog_check_period > 0.0 else 0.1
-            self.feedback_watchdog_timer = self.create_timer(period, self._feedback_watchdog_callback)
+        self.heartbeat_watchdog_timer = None
+        if self.can_heartbeat_timeout > 0.0:
+            period = heartbeat_watchdog_period if heartbeat_watchdog_period > 0.0 else 0.1
+            self.heartbeat_watchdog_timer = self.create_timer(
+                period, self._heartbeat_watchdog_callback
+            )
             self.get_logger().info(
-                f"/from_can_bus watchdog: timeout {self.can_feedback_timeout:.2f}s, check period {period:.2f}s"
+                f"CAN heartbeat watchdog: timeout {self.can_heartbeat_timeout:.2f}s, "
+                f"check period {period:.2f}s (COB-ID 0x{CANOPEN_HEARTBEAT_COB_ID_MIN:03X}"
+                f"..0x{CANOPEN_HEARTBEAT_COB_ID_MAX:03X})"
+            )
+
+        self.cmd_vel_timeout = float(self.get_parameter('cmd_vel_timeout_sec').value)
+        cmd_vel_timeout_period = float(self.get_parameter('cmd_vel_timeout_check_period_sec').value)
+        self.last_cmd_vel_time = self.get_clock().now()
+        self._cmd_vel_timed_out = False
+        self._cmd_vel_suppress_until = None
+        self._cmd_vel_suppress_after_manual_steer_sec = float(
+            self.get_parameter('cmd_vel_suppress_after_manual_steer_sec').value
+        )
+        self.cmd_vel_timeout_timer = None
+        if self.cmd_vel_timeout > 0.0:
+            period = cmd_vel_timeout_period if cmd_vel_timeout_period > 0.0 else 0.1
+            self.cmd_vel_timeout_timer = self.create_timer(period, self._cmd_vel_timeout_callback)
+            self.get_logger().info(
+                f"cmd_vel timeout: {self.cmd_vel_timeout:.2f}s (check period {period:.2f}s)"
             )
 
         self.heartbeat_period = float(self.get_parameter('heartbeat_sync_period_sec').value)
@@ -1345,8 +1375,10 @@ class IntegratedSwerveController0930(Node):
 
         if getattr(self, 'heartbeat_timer', None):
             self.heartbeat_timer.cancel()
-        if getattr(self, 'feedback_watchdog_timer', None):
-            self.feedback_watchdog_timer.cancel()
+        if getattr(self, 'heartbeat_watchdog_timer', None):
+            self.heartbeat_watchdog_timer.cancel()
+        if getattr(self, 'cmd_vel_timeout_timer', None):
+            self.cmd_vel_timeout_timer.cancel()
 
         # 2. Stop all drive motors immediately (RPM=0)
         self._stop_all_drive_motors()
@@ -1478,11 +1510,21 @@ class IntegratedSwerveController0930(Node):
         except Exception as exc:
             self.get_logger().error(f'[Shutdown] Failed to home wheels: {exc}')
 
+    @staticmethod
+    def _is_canopen_heartbeat_cob_id(cob_id: int) -> bool:
+        return CANOPEN_HEARTBEAT_COB_ID_MIN <= cob_id <= CANOPEN_HEARTBEAT_COB_ID_MAX
+
+    def _on_canopen_heartbeat_received(self) -> None:
+        self.last_can_heartbeat_time = self.get_clock().now()
+        if self._is_heartbeat_watchdog_tripped:
+            self.get_logger().info(
+                '모터 heartbeat CAN 메시지 수신이 재개되었습니다. 명령 처리가 정상화됩니다.'
+            )
+            self._is_heartbeat_watchdog_tripped = False
+
     def _can_feedback_callback(self, frame: Frame) -> None:
-        self.last_can_feedback_time = self.get_clock().now()
-        if self._is_feedback_watchdog_tripped:
-            self.get_logger().info('CAN feedback reception resumed. Command processing normalized.')
-            self._is_feedback_watchdog_tripped = False
+        if self._is_canopen_heartbeat_cob_id(frame.id):
+            self._on_canopen_heartbeat_received()
 
         # [2025-11-28] TPDO2 파싱: Position 또는 Status Word 기반 Target Reached 판단
         cob_id = frame.id
@@ -1581,15 +1623,36 @@ class IntegratedSwerveController0930(Node):
             for node_id in self.steer_motor_ids
         )
 
-    def _feedback_watchdog_callback(self) -> None:
-        elapsed = (self.get_clock().now() - self.last_can_feedback_time).nanoseconds / 1e9
-        if elapsed > self.can_feedback_timeout:
-            if not self._is_feedback_watchdog_tripped:
+    def _heartbeat_watchdog_callback(self) -> None:
+        elapsed = (self.get_clock().now() - self.last_can_heartbeat_time).nanoseconds / 1e9
+        if elapsed > self.can_heartbeat_timeout:
+            if not self._is_heartbeat_watchdog_tripped:
                 self.get_logger().error(
-                    f"CAN feedback is missing for more than {self.can_feedback_timeout:.2f}s. Initiating emergency stop."
+                    f'모터로부터 heartbeat CAN 메시지가 {self.can_heartbeat_timeout:.2f}초 이상 '
+                    '수신되지 않습니다. CAN 통신을 점검하세요. 비상 정지를 수행합니다.'
                 )
                 self._command_robot_stop()
-                self._is_feedback_watchdog_tripped = True
+                self._is_heartbeat_watchdog_tripped = True
+
+    def _cmd_vel_timeout_callback(self) -> None:
+        if self._is_shutting_down or self.cmd_vel_timeout <= 0.0:
+            return
+        if self._is_heartbeat_watchdog_tripped:
+            return
+        elapsed = (self.get_clock().now() - self.last_cmd_vel_time).nanoseconds / 1e9
+        if elapsed > self.cmd_vel_timeout:
+            if not self._cmd_vel_timed_out:
+                self.get_logger().warn(
+                    f'/cmd_vel이 {self.cmd_vel_timeout:.2f}초 이상 수신되지 않아 구동 모터를 정지합니다.',
+                    throttle_duration_sec=2.0,
+                )
+                self._cmd_vel_timed_out = True
+            self.prev_vx = 0.0
+            self.prev_vy = 0.0
+            self.prev_omega = 0.0
+            self._command_robot_stop()
+        else:
+            self._cmd_vel_timed_out = False
 
     def _command_robot_stop(self) -> None:
         zero_rpms = [0.0] * len(self.drive_motor_ids)
@@ -1640,14 +1703,22 @@ class IntegratedSwerveController0930(Node):
             # Ignore cmd_vel during shutdown to prevent drive motors from moving
             return
             
-        if self._is_feedback_watchdog_tripped:
+        if self._is_heartbeat_watchdog_tripped:
             self.get_logger().warn(
-                'CAN feedback watchdog triggered. Ignoring /cmd_vel commands.',
+                '모터로부터 heartbeat CAN 메시지가 수신되지 않아 /cmd_vel 명령을 무시합니다. '
+                'CAN 통신을 점검하세요.',
                 throttle_duration_sec=2.0,
             )
             return
 
+        if self._cmd_vel_suppress_until is not None:
+            if self.get_clock().now() < self._cmd_vel_suppress_until:
+                return
+            self._cmd_vel_suppress_until = None
+
         current_time = self.get_clock().now()
+        self.last_cmd_vel_time = current_time
+        self._cmd_vel_timed_out = False
         dt = (current_time - self.last_msg_time).nanoseconds / 1e9
         self.last_msg_time = current_time
 
@@ -1802,9 +1873,10 @@ class IntegratedSwerveController0930(Node):
         if self._is_shutting_down:
             return
 
-        if self._is_feedback_watchdog_tripped:
+        if self._is_heartbeat_watchdog_tripped:
             self.get_logger().warn(
-                'CAN feedback watchdog triggered. Ignoring /manual_steer_override.',
+                '모터로부터 heartbeat CAN 메시지가 수신되지 않아 /manual_steer_override를 무시합니다. '
+                'CAN 통신을 점검하세요.',
                 throttle_duration_sec=2.0,
             )
             return
@@ -1842,6 +1914,13 @@ class IntegratedSwerveController0930(Node):
 
         deg_list = [round(math.degrees(v), 1) for v in steer_angles_raw]
         self.get_logger().info(f'manual_steer_override applied (deg): {deg_list}')
+
+        hold_sec = self._cmd_vel_suppress_after_manual_steer_sec
+        if hold_sec > 0.0:
+            self._cmd_vel_suppress_until = self.get_clock().now() + Duration(seconds=hold_sec)
+            self.get_logger().info(
+                f'/cmd_vel suppressed for {hold_sec:.1f}s after manual_steer_override'
+            )
 
     def _rpm_to_pps(self, rpm: float) -> int:
         motor_rpm = rpm * DRIVE_GEAR_RATIO

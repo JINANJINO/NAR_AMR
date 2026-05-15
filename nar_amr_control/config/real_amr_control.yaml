@@ -67,8 +67,11 @@ integrated_swerve_controller:
 
     # safety / watchdog
     heartbeat_sync_period_sec: 0.02
-    can_feedback_timeout_sec: 3.0
-    feedback_watchdog_check_period_sec: 0.1
+    can_heartbeat_timeout_sec: 3.0
+    can_heartbeat_watchdog_check_period_sec: 0.1
+    cmd_vel_timeout_sec: 0.5
+    cmd_vel_timeout_check_period_sec: 0.1
+    cmd_vel_suppress_after_manual_steer_sec: 2.0
 
     # coordinated steering-drive control
     coordinated_control:
