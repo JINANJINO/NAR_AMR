@@ -1,0 +1,3 @@
+# Force LF line endings for all text files checked into git.
+# Windows에서 편집해도 git이 checkout/commit 시 LF로 변환합니다.
+* text=auto eol=lf

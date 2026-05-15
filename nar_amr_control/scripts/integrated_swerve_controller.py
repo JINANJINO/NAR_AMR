@@ -2444,13 +2444,21 @@ class IntegratedSwerveController0930(Node):
 
 def main(args=None) -> None:
     rclpy.init(args=args)
-    node = IntegratedSwerveController0930()
+    node = None
     try:
+        node = IntegratedSwerveController0930()
         rclpy.spin(node)
     except KeyboardInterrupt:
         pass
+    except Exception:
+        tb = traceback.format_exc()
+        if node:
+            node.get_logger().fatal(f'[FATAL] Node crashed:\n{tb}')
+        else:
+            print(f'[FATAL] Node creation failed:\n{tb}', flush=True)
     finally:
-        node.destroy_node()
+        if node:
+            node.destroy_node()
         if rclpy.ok():
             rclpy.shutdown()
 

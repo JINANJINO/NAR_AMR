@@ -62,6 +62,7 @@ def generate_launch_description():
         executable='integrated_swerve_controller.py',
         name='integrated_swerve_controller',
         output='screen',
+        emulate_tty=True,
         parameters=[
             params_file,
             {
